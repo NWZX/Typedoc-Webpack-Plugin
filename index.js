@@ -28,6 +28,7 @@ var typedoc = require('typedoc');
 var clone = require('lodash.clone');
 var merge = require('lodash.merge');
 var path = require('path');
+const pluginName = 'TypedocWebpackPlugin';
 
 function TypedocWebpackPlugin(options, input) {
 	this.inputFiles = ['./'];
@@ -61,7 +62,7 @@ function TypedocWebpackPlugin(options, input) {
 TypedocWebpackPlugin.prototype.apply = function(compiler) {
 	var self = this;
 
-    compiler.hooks.emit.tapAsync('TypedocWebpackPlugin', (compilation, callback) => {
+    compiler.hooks.emit.tapAsync(pluginName, (compilation, callback) => {
 		// get list of files that has been changed
 		var changedFiles = Object.keys(compilation.fileTimestamps).filter(function(watchfile) {
 			return (this.prevTimestamps[watchfile] || this.startTime) < (compilation.fileTimestamps[watchfile] || Infinity);
@@ -124,7 +125,7 @@ TypedocWebpackPlugin.prototype.apply = function(compiler) {
 		callback();
 	});
 
-	compiler.plugin('done', function (stats) {
+	compiler.hooks.done.tapAsync(pluginName, (stats) => {
 		console.log('Typedoc finished generating');
 	});
 };
