@@ -61,8 +61,7 @@ function TypedocWebpackPlugin(options, input) {
 TypedocWebpackPlugin.prototype.apply = function(compiler) {
 	var self = this;
 
-	compiler.plugin('emit', function(compilation, callback) 
-	{
+    compiler.hooks.emit.tapAsync('TypedocWebpackPlugin', (compilation, callback) => {
 		// get list of files that has been changed
 		var changedFiles = Object.keys(compilation.fileTimestamps).filter(function(watchfile) {
 			return (this.prevTimestamps[watchfile] || this.startTime) < (compilation.fileTimestamps[watchfile] || Infinity);
