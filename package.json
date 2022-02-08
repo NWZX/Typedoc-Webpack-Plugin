@@ -1,8 +1,8 @@
 {
   "name": "typedoc-webpack-plugin",
   "author": "Microsoft Corp.",
-  "homepage": "https://github.com/afurlane/Typedoc-Webpack-Plugin.git",
-  "version": "1.1.5",
+  "homepage": "https://github.com/NWZX/Typedoc-Webpack-Plugin.git",
+  "version": "1.2.0",
   "license": "MIT",
   "description": "Runs typedoc compilation as a webpack plugin",
   "keywords": [
@@ -15,14 +15,13 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/afurlane/Typedoc-Webpack-Plugin.git"
+    "url": "https://github.com/NWZX/Typedoc-Webpack-Plugin.git"
   },
   "dependencies": {
-    "@types/node": "^16.6.1",
-    "lodash.clone": "^4.5.0",
-    "lodash.merge": "^4.6.0"
+    "@types/node": "^16.6.1"
   },
   "peerDependencies": {
-    "typedoc": ">= 0.21.0"
+    "typedoc": ">= 0.21.0",
+    "webpack": ">=5.20.0"
   }
 }

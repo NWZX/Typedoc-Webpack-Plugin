@@ -24,96 +24,123 @@
  *  THE SOFTWARE.
  */
 
-var typedoc = require('typedoc');
-var clone = require('lodash.clone');
-var merge = require('lodash.merge');
-var path = require('path');
+/**
+ * @typedef {Object} FileStamps
+ * @property {number} safeTime - The last time the file was modified (margin accuracy).
+ * @property {number} [timestamp] - The last time the file was modified.
+ */
+
+const typedoc = require('typedoc');
+const path = require('path');
+import webpack from "webpack";
+
 const pluginName = 'TypedocWebpackPlugin';
 
-function TypedocWebpackPlugin(options, input) {
-	this.inputFiles = ['./'];
-	if (input) {
-		this.inputFiles = (input.constructor === Array) ? input : [input];
-	}
+/**
+ * Initialize the plugin
+ * @param {Partial<typedoc.TypeDocOptions>} options 
+ */
+function TypedocWebpackPlugin (options) {
+	/**
+	 * @type {number}
+	 */
 	this.startTime = Date.now();
-  	this.prevTimestamps = {};
-  	this.defaultTypedocOptions = {
-			module: 'commonjs',
-			target: 'es5',
-			exclude: '**/node_modules/**/*.*',
-			experimentalDecorators: true,
-			excludeExternals: true
-  	};
-
-  	// merge user options into default options and assign
-  	merge(this.defaultTypedocOptions, options);
-		this.typeDocOptions = this.defaultTypedocOptions;
-
-		//only set default output directory if neither out or json properties are set
-		if (!this.typeDocOptions.out && !this.typeDocOptions.json) {
-			this.typeDocOptions.out = "./docs"
-		}
+	/**
+	 * Previous file timestamps
+	 * @type {Map<string, FileStamps>}
+	 * @warning FileStamps can be "null"
+	 */
+	this.prevTimestamps = new Map();
+	/**
+	 * @type {typedoc.TypeDocOptions}
+	 */
+	this.typeDocOptions = options;
+	/**
+	 * @type {boolean}
+	 */
+	this.watchMode = options.watch ? true : false;
 }
 
-/*
-*	@param compiler Webpack compiler object. @see <a href="https://webpack.github.io/docs/plugins.html#the-compiler-instance">label</a>
+/**
+ * Select a path in the array of paths
+ * @param {string} path 
+ * @param {Map} map 
+ */
+const extractTimestampsEntry = (path, map) => {
+	return map.get(path)?.snapshot.fileTimestamps;
+}
+
+/**
+ * Remove all entry that don't have a timestamp or is not a typescript file
+ * @param {Map<string, any>} map 
+ * @returns 
+ */
+const reduceFileTimestamps = (map) => {
+	map?.forEach((value, key) => {
+		if (!value?.timestamp || key.indexOf('.ts') == -1) {
+			map.delete(key);
+		}
+	});
+}
+
+/**
+ * Compare new and old file timestamps
+ * @param {Map} oldMap 
+ * @param {Map} newMap 
+ */
+const compareTimestamps = (oldMap, newMap) => {
+	const change = 0;
+	newMap?.forEach((value, key) => {
+		console.log(oldMap.get(key)?.timestamp, value.timestamp);
+		if (oldMap.get(key)?.timestamp || this.startTime < value.timestamp) {
+			change++;
+		}
+	});
+	return change;
+}
+
+/**
+*	@param {webpack.Compiler} compiler Webpack compiler object.
 * 	@return void
 */
-TypedocWebpackPlugin.prototype.apply = function(compiler) {
-	var self = this;
+TypedocWebpackPlugin.prototype.apply = function (compiler) {
+	/**
+	 * Start the documentation generation
+	 * @param {webpack.Compilation} compilation 
+	 * @param {*} callback 
+	 */
+	const generateDoc = (compilation, callback) => {
+		console.log(compilation);
+		let webPackEntryPoint = compiler.options.entry.main.import[0];
+		webPackEntryPoint = path.isAbsolute(webPackEntryPoint) ? webPackEntryPoint : path.resolve(compiler.options.context, webPackEntryPoint);
+		webPackEntryPoint = path.dirname(webPackEntryPoint);
+		/**
+		 * Get list of files that has been changed
+		 * @type {Map<string, FileStamps>} FileStamps can be "null"
+		 */
+		const fileInfo = compilation.fileSystemInfo._fileTimestampsOptimization._map;
+		const fileTimestamps = extractTimestampsEntry(webPackEntryPoint, fileInfo);
+		reduceFileTimestamps(fileTimestamps);
+		const changedFiles = compareTimestamps(this.prevTimestamps, fileTimestamps);
 
-    compiler.hooks.emit.tapAsync(pluginName, (compilation, callback) => {
-		// get list of files that has been changed
-		var changedFiles = Object.keys(compilation.fileTimestamps).filter(function(watchfile) {
-			return (this.prevTimestamps[watchfile] || this.startTime) < (compilation.fileTimestamps[watchfile] || Infinity);
-		}.bind(this));
+		// If typescript files have been changed
+		if (changedFiles > 0) {
+			var app = new typedoc.Application();
 
-		// determine if any typescript files have been changed
-		var tsFileEdited = false; 
-		for (var i = 0; i < changedFiles.length; i++) {
-			if (changedFiles[i].indexOf('.ts') > -1) {
-				tsFileEdited = true;
-				break;
-			}
-		}
+			app.options.addReader(new typedoc.TSConfigReader()); // 1st Load TSConfig file
+			app.options.addReader(new typedoc.TypeDocReader()); // 2nd Load TypeDoc file
+			app.bootstrap(this.typeDocOptions); // 3rd Use webpack config options
 
-		// if typescript files have been changed or we cannot determine what files have been changed run typedoc build
-		if(tsFileEdited || changedFiles.length === 0) 
-		{
-			// If an absolute path set in self.typeDocOptions.out or self.typeDocOptions.json, use that
-			// else if the output path is specified in webpack config and out is relative, output typedocs relative to that path
-			var typedocOptions = clone(self.typeDocOptions);
-
-			// output can be either json or directory
-			if(self.typeDocOptions.json) {
-				if(path.isAbsolute(self.typeDocOptions.json)) {
-					typedocOptions.json = self.typeDocOptions.json;
-				}
-				else if(compiler.options.output && compiler.options.output.path) {
-					typedocOptions.json = path.join(compiler.options.output.path, self.typeDocOptions.json);
-				}
-			}
-			else {
-				if(path.isAbsolute(self.typeDocOptions.out)) {
-					typedocOptions.out = self.typeDocOptions.out;
-				}
-				else if(compiler.options.output && compiler.options.output.path) {
-					typedocOptions.out = path.join(compiler.options.output.path, self.typeDocOptions.out);
-				}
-			}
-
-			var typedocApp = new typedoc.Application(typedocOptions);
-			var src = typedocApp.expandInputFiles(self.inputFiles);
-			var project = typedocApp.convert(src);
+			var project = app.convert();
 		
 			if (project) {
-				if(typedocOptions.json) {
+				if (app.options.getValue("json")) {
 					console.log('Generating typedoc json');
-					typedocApp.generateJson(project, typedocOptions.json);
+					app.generateJson(project, app.options.getValue("json"));
 				}
 				else {
 					console.log('Generating updated typedocs');
-					typedocApp.generateDocs(project, typedocOptions.out);
+					app.generateDocs(project, app.options.getValue("out"));
 				}
 			}
 		}
@@ -121,13 +148,11 @@ TypedocWebpackPlugin.prototype.apply = function(compiler) {
 			console.log('No ts filed changed. Not recompling typedocs');
 		}
 
-		this.prevTimestamps = compilation.fileTimestamps;
+		this.prevTimestamps = fileTimestamps;
 		callback();
-	});
-
-	compiler.hooks.done.tapAsync(pluginName, (stats) => {
-		console.log('Typedoc finished generating');
-	});
+	};
+	
+    compiler.hooks.emit.tapAsync(pluginName, generateDoc);
 };
 
 module.exports = TypedocWebpackPlugin;
