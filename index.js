@@ -32,7 +32,7 @@
 
 const typedoc = require('typedoc');
 const path = require('path');
-import webpack from "webpack";
+const webpack = require('webpack');
 
 const pluginName = 'TypedocWebpackPlugin';
 
@@ -40,7 +40,7 @@ const pluginName = 'TypedocWebpackPlugin';
  * Initialize the plugin
  * @param {Partial<typedoc.TypeDocOptions>} options 
  */
-function TypedocWebpackPlugin (options) {
+function TypedocWebpackPlugin(options) {
 	/**
 	 * @type {number}
 	 */
@@ -58,7 +58,7 @@ function TypedocWebpackPlugin (options) {
 	/**
 	 * @type {boolean}
 	 */
-	this.watchMode = options.watch ? true : false;
+	this.watchMode = options?.watch ? true : false;
 }
 
 /**
@@ -89,9 +89,8 @@ const reduceFileTimestamps = (map) => {
  * @param {Map} newMap 
  */
 const compareTimestamps = (oldMap, newMap) => {
-	const change = 0;
+	let change = 0;
 	newMap?.forEach((value, key) => {
-		console.log(oldMap.get(key)?.timestamp, value.timestamp);
 		if (oldMap.get(key)?.timestamp || this.startTime < value.timestamp) {
 			change++;
 		}
@@ -110,7 +109,6 @@ TypedocWebpackPlugin.prototype.apply = function (compiler) {
 	 * @param {*} callback 
 	 */
 	const generateDoc = (compilation, callback) => {
-		console.log(compilation);
 		let webPackEntryPoint = compiler.options.entry.main.import[0];
 		webPackEntryPoint = path.isAbsolute(webPackEntryPoint) ? webPackEntryPoint : path.resolve(compiler.options.context, webPackEntryPoint);
 		webPackEntryPoint = path.dirname(webPackEntryPoint);
@@ -132,7 +130,7 @@ TypedocWebpackPlugin.prototype.apply = function (compiler) {
 			app.bootstrap(this.typeDocOptions); // 3rd Use webpack config options
 
 			var project = app.convert();
-		
+
 			if (project) {
 				if (app.options.getValue("json")) {
 					console.log('Generating typedoc json');
@@ -151,8 +149,8 @@ TypedocWebpackPlugin.prototype.apply = function (compiler) {
 		this.prevTimestamps = fileTimestamps;
 		callback();
 	};
-	
-    compiler.hooks.emit.tapAsync(pluginName, generateDoc);
+
+	compiler.hooks.emit.tapAsync(pluginName, generateDoc);
 };
 
 module.exports = TypedocWebpackPlugin;
