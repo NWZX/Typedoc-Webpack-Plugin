@@ -91,7 +91,7 @@ const reduceFileTimestamps = (map) => {
 const compareTimestamps = (oldMap, newMap) => {
 	let change = 0;
 	newMap?.forEach((value, key) => {
-		if (oldMap.get(key)?.timestamp || this.startTime < value.timestamp) {
+		if (oldMap?.get(key)?.timestamp || this.startTime < value.timestamp) {
 			change++;
 		}
 	});
