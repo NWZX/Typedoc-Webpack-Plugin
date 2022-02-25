@@ -26,7 +26,7 @@ var TypedocWebpackPlugin = require('typedoc-webpack-plugin');
 ...
 
 plugins: [
-	new TypedocWebpackPlugin({})
+	new TypedocWebpackPlugin()
 ]
 ```
 
@@ -39,7 +39,18 @@ Here is an example of a more expanded configuration:
 ```
 plugins: [
 	new TypedocWebpackPlugin({
-		"entryPoints": ["./src/index.ts", "./src/secondary-entry.ts"],
+		"entryPoints": ["./src/index.ts", "./src/myfile2.ts"],
+    	"out": "doc"
+		"watch": "true" //Not implemented yet (false by default)
+	})
+]
+```
+
+```
+plugins: [
+	new TypedocWebpackPlugin({
+		"entryPoints": ["./src"],
+		"entryPointStrategy": "expand",
     	"out": "doc"
 	})
 ]

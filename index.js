@@ -103,15 +103,11 @@ const compareTimestamps = (oldMap, newMap) => {
 * 	@return void
 */
 TypedocWebpackPlugin.prototype.apply = function (compiler) {
-	/**
-	 * Start the documentation generation
-	 * @param {webpack.Compilation} compilation 
-	 * @param {*} callback 
-	 */
-	const generateDoc = (compilation, callback) => {
+
+	const watchFiles = (compilation) => {
 		let webPackEntryPoint = compiler.options.entry.main.import[0];
-		webPackEntryPoint = path.isAbsolute(webPackEntryPoint) ? webPackEntryPoint : path.resolve(compiler.options.context, webPackEntryPoint);
-		webPackEntryPoint = path.dirname(webPackEntryPoint);
+			webPackEntryPoint = path.isAbsolute(webPackEntryPoint) ? webPackEntryPoint : path.resolve(compiler.options.context, webPackEntryPoint);
+			webPackEntryPoint = path.dirname(webPackEntryPoint);
 		/**
 		 * Get list of files that has been changed
 		 * @type {Map<string, FileStamps>} FileStamps can be "null"
@@ -120,9 +116,17 @@ TypedocWebpackPlugin.prototype.apply = function (compiler) {
 		const fileTimestamps = extractTimestampsEntry(webPackEntryPoint, fileInfo);
 		reduceFileTimestamps(fileTimestamps);
 		const changedFiles = compareTimestamps(this.prevTimestamps, fileTimestamps);
-
+		this.prevTimestamps = fileTimestamps;
+		return changedFiles;
+	}
+	/**
+	 * Start the documentation generation
+	 * @param {webpack.Compilation} compilation 
+	 * @param {*} callback 
+	 */
+	const generateDoc = (compilation, callback) => {
 		// If typescript files have been changed
-		if (changedFiles > 0) {
+		if ((this.watchMode && watchFiles(compilation) > 0) || !this.watchMode) {
 			var app = new typedoc.Application();
 
 			app.options.addReader(new typedoc.TSConfigReader()); // 1st Load TSConfig file
@@ -146,7 +150,7 @@ TypedocWebpackPlugin.prototype.apply = function (compiler) {
 			console.log('No ts filed changed. Not recompling typedocs');
 		}
 
-		this.prevTimestamps = fileTimestamps;
+		
 		callback();
 	};
 
